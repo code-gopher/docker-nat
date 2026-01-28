@@ -16,8 +16,8 @@ NC='\033[0m'
 
 GHCR_PREFIX="ghcr.io/code-gopher/docker-nat"
 NETWORK_NAME="nat-network"
-NETWORK_SUBNET="192.168.10.0/24"
-IP_PREFIX="192.168.10"
+NETWORK_SUBNET="192.168.100.0/24"
+IP_PREFIX="192.168.100"
 
 # 表格格式: 序号(6) 名称(14) 状态(10) IP(16) SSH(10) NAT(15)
 TABLE_FORMAT="%-6s %-14s %-10s %-16s %-10s %-15s\n"
