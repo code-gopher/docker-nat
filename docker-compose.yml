@@ -1,0 +1,73 @@
+services:
+  # Debian 版本
+  debian-ssh:
+    build:
+      context: ./debian
+      dockerfile: Dockerfile
+    container_name: debian-ssh
+    hostname: debian-ssh
+    privileged: true
+    ports:
+      - "10020:22"
+      - "20020-20029:20020-20029/tcp"
+      - "20020-20029:20020-20029/upd"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    sysctls:
+      - net.ipv4.ip_forward=1
+    environment:
+      - ROOT_PASSWORD=123456
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    networks:
+      nat-net:
+        ipv4_address: 192.168.10.2
+
+  # Alpine 版本
+  alpine-ssh:
+    build:
+      context: ./alpine
+      dockerfile: Dockerfile
+    container_name: alpine-ssh
+    hostname: alpine-ssh
+    privileged: true
+    ports:
+      - "10030:22"
+      - "20030-20039:20030-20039/tcp"
+      - "20030-20099:20030-20039/upd"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    sysctls:
+      - net.ipv4.ip_forward=1
+    environment:
+      - ROOT_PASSWORD=123456
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./data/alpine-ssh:/data
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 128M
+    networks:
+      nat-net:
+        ipv4_address: 192.168.10.3
+
+networks:
+  nat-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.10.0/24
+          gateway: 192.168.10.1
+
