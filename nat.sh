@@ -16,8 +16,8 @@ NC='\033[0m'
 
 GHCR_PREFIX="ghcr.io/code-gopher/docker-nat"
 NETWORK_NAME="nat-network"
-NETWORK_SUBNET="192.168.100.0/24"
-IP_PREFIX="192.168.100"
+NETWORK_SUBNET="192.168.10.0/24"
+IP_PREFIX="192.168.10"
 
 # 表格格式: 序号(6) 名称(14) 状态(10) IP(16) SSH(10) NAT(15)
 TABLE_FORMAT="%-6s %-14s %-10s %-16s %-10s %-15s\n"
@@ -25,10 +25,21 @@ TABLE_FORMAT="%-6s %-14s %-10s %-16s %-10s %-15s\n"
 # ==================== 部署逻辑 ====================
 
 # 确保网络存在
+# 确保网络存在
 ensure_network() {
     if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
         echo -e "${YELLOW}创建自定义网络: $NETWORK_NAME ($NETWORK_SUBNET)${NC}"
         docker network create --subnet="$NETWORK_SUBNET" "$NETWORK_NAME" >/dev/null
+    else
+        # 检查已存在网络的子网是否匹配
+        EXISTING_SUBNET=$(docker network inspect "$NETWORK_NAME" --format '{{range .IPAM.Config}}{{.Subnet}}{{end}}')
+        if [ "$EXISTING_SUBNET" != "$NETWORK_SUBNET" ]; then
+            echo -e "${RED}错误: 网络 $NETWORK_NAME 已存在，但子网不匹配!${NC}"
+            echo -e "  当前配置: ${YELLOW}$NETWORK_SUBNET${NC}"
+            echo -e "  现有网络: ${YELLOW}$EXISTING_SUBNET${NC}"
+            echo -e "${YELLOW}提示: 请修改脚本中的 CIDR 设置，或删除旧网络 (docker network rm $NETWORK_NAME)${NC}"
+            exit 1
+        fi
     fi
 }
 
@@ -170,6 +181,8 @@ deploy_container() {
                       -v /var/lib/lxcfs/proc/uptime:/proc/uptime:rw"
     fi
     
+    # 暂时关闭 set -e 以捕获 docker run 错误
+    set +e
     local RUN_ERR
     RUN_ERR=$(docker run -d \
         --cpus="${CPU}" \
@@ -188,9 +201,11 @@ deploy_container() {
         --network "${NETWORK_NAME}" \
         --ip "${CONTAINER_IP}" \
         --restart unless-stopped \
-        "${IMAGE_NAME}" 2>&1) 
+        "${IMAGE_NAME}" 2>&1)
+    local RUN_CODE=$?
+    set -e # 恢复 set -e
     
-    if [ $? -ne 0 ]; then
+    if [ $RUN_CODE -ne 0 ]; then
         echo -e "${RED}启动失败: ${RUN_ERR}${NC}"
         return 1
     fi
